@@ -14,6 +14,41 @@ use Eccube\Service\PluginService;
 
 class PluginInstaller extends LibraryInstaller
 {
+    public function isInstalled(InstalledRepositoryInterface $repo, PackageInterface $package)
+    {
+        if ($repo->hasPackage($package)) {
+            /** @var Kernel $kernel */
+            $kernel = $GLOBALS['kernel'];
+            $container = $kernel->getContainer();
+
+            $extra = $package->getExtra();
+            $source = $extra['id'];
+            $code = $extra['code'];
+            $version = $package->getPrettyVersion();
+
+            $pluginRepository = $container->get('Eccube\Repository\PluginRepository');
+            $Plugin = $pluginRepository->findOneBy([
+                'source' => $source,
+                'code' => $code,
+                'version' => $version
+            ]);
+
+            if(null === $Plugin) {
+                return false;
+            }
+        } else {
+            return false;
+        }
+
+        $installPath = $this->getInstallPath($package);
+
+        if (is_readable($installPath)) {
+            return true;
+        }
+
+        return (Platform::isWindows() && $this->filesystem->isJunction($installPath)) || is_link($installPath);
+    }
+    
     public function getInstallPath(PackageInterface $package)
     {
         $extra = $package->getExtra();
